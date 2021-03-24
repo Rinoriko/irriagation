@@ -1,4 +1,4 @@
-#include <Arduino.h>
+
 
 // программа постоянно все пробегает, не использует delay
 // дисплей отображает все время параметры в зависимости от mode
@@ -8,11 +8,13 @@
 //прикрутить: 
 //- энкодер
 //- полив
-#include <TimerOne.h>
+#include <Arduino.h>
 #include <Wire.h>
+#include <TimerOne.h>
+
 #include <EEPROM.h>
 #include <LiquidCrystal_I2C.h> // Подключение библиотеки дисплея
-#include <iarduino_RTC.h>      // Подключение библиотеки RTC
+#include <iarduino_RTC.h>   // Подключение библиотеки RTC
 
 #define TIME_LAG_BUTTON 100 //антидребезг кнопки в 100мс
 #define PIN_FILL_SENSOR 3   // датчик наполнения на 3 контакт
@@ -80,6 +82,13 @@ void loop()
   set_mode();
   set_value();
 }
+void value_from_encoder() // затычка данные todo передаль на код энколдера
+{
+  if (Serial.available()) 
+  {       // есть что на вход?
+    value = Serial.parseInt();
+  }  
+}
 void set_value()
 {
   //1-установка 1 парника,2-установка 2 парника, 9-установки времени,
@@ -101,17 +110,40 @@ void set_value()
         change_menu = 0;
         value =  time_minutes;
       }
-
+      if (value >= 0 && value <= 60)
+      {
+        time_minutes = value;
+      }
+      else if (value > 60)
+      {
+        value = 60;  
+      }
+      else if (value < 0)
+      {
+        value = 0; 
+      }
       break;
-
+//--------------------
       case 2:
        if (change_menu = 1)
       {
         change_menu = 0;
         time_hours = time.Hours;
       }
+      if (value >= 0 && value <= 24)
+      {
+        time_hours = value;
+      }
+      else if (value > 24)
+      {
+        value = 24;  
+      }
+      else if (value < 0)
+      {
+        value = 0; 
+      }
       break;
-
+//--------------------
       case 3:
        if (change_menu = 1)
       {
@@ -119,28 +151,64 @@ void set_value()
         time_day = time.day; 
       }
       break;
-
+//--------------------
       case 4:
        if (change_menu = 1)
       {
         change_menu = 0;
         time_month = time.month;
       }
+      if (value >= 0 && value <= 12)
+      {
+        time_month = value;
+      }
+      else if (value > 12)
+      {
+        value = 24;  
+      }
+      else if (value < 0)
+      {
+        value = 0; 
+      }
       break;
-
+//--------------------
       case 5:
        if (change_menu = 1)
       {
         change_menu = 0;
         time_year = time.year;
       }
+      if (value >= 0 && value <= 3000)
+      {
+        time_year = value;
+      }
+      else if (value > 3000)
+      {
+        value = 3000;  
+      }
+      else if (value < 0)
+      {
+        value = 0; 
+      }
       break;
-
+//--------------------
       case 6:
        if (change_menu = 1)
       {
         change_menu = 0;
         time_week = time.weekday;//(0-воскресенье, 6-суббота)
+      }
+        if (value >= 0 && value <= 6)
+      {
+        time_week = value;
+      }
+      else if (value > 6)
+      {
+        value = 6;  
+      }
+      else if (value < 0)
+      {
+        value = 0; 
       }
       break;
     }
@@ -332,23 +400,43 @@ void lcd_show() //вызываем по прерыванию
   if ((time.seconds/10)%2==0)
   {
     lcd.setCursor(0, 0);
-    lcd.print("D");
+    lcd.print("PAR 1 ");
     lcd.print(day_next_irrigation_1);
-    lcd.print("T");
+    lcd.print(":");
+    if (day_next_irrigation_1>=time.day)
+    {
+      lcd.print(time.month);
+    }
+    else
+    {
+      lcd.print(time.month + 1);
+    }
+    lcd.setCursor(0, 1);
     lcd.print(set_hour_1);
+    lcd.print(":");
     lcd.print(set_min_1);
-    lcd.print("L");
+    lcd.print(" L:");
     lcd.print(set_liters_1);
   }
   else
   {
-    lcd.setCursor(0, 1);
-    lcd.print("D");
+    lcd.setCursor(0, 0);
+    lcd.print("PAR 2 ");
     lcd.print(day_next_irrigation_2);
-    lcd.print("T");
+    lcd.print(":");
+    if (day_next_irrigation_2>=time.day)
+    {
+      lcd.print(time.month);
+    }
+    else
+    {
+      lcd.print(time.month + 1);
+    }
+    lcd.setCursor(0, 1);
     lcd.print(set_hour_2);
+    lcd.print(":");
     lcd.print(set_min_2);
-    lcd.print("L");
+    lcd.print(" L:");
     lcd.print(set_liters_2);
   }
   break;
@@ -378,9 +466,9 @@ void set_time()
 {
 
   // Ниже у нас прописываются временные значения в виде секунд, минут, часов, даты, включая месяц и год, и также можете указать день недели
-  //time.settime(10, 10, 10, 4, 10, 17, 3); // 10 сек, 10 мин, 10 час, 4 , октября, 2017 года, среда
+  time.settime(0, time_minutes, time_hours, time_day, time_month, time_year, time_week); // 10 сек, 10 мин, 10 час, 4 , октября, 2017 года, среда
 }
-void read_buttons() //TESTS PASSED
+void read_buttons() // 
 {
   uint8_t button_1 = 0;                                 //флаг 1 кнопки
   uint8_t button_2 = 0;                                 //флаг 2 кнопки
